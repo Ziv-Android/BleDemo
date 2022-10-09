@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DesignSurface">
+    <option name="filePathToZoomLevelMap">
+      <map>
+        <entry key="..\:/workspace/private/R5Demo/app/src/main/res/drawable/btn_disconnect_border.xml" value="0.3085" />
+        <entry key="..\:/workspace/private/R5Demo/app/src/main/res/drawable/ic_launcher_background.xml" value="0.3085" />
+        <entry key="..\:/workspace/private/R5Demo/app/src/main/res/drawable/shouquan_qrcode_g_gallery.xml" value="0.3085" />
+        <entry key="..\:/workspace/private/R5Demo/app/src/main/res/layout/activity_main.xml" value="0.41140529531568226" />
+        <entry key="..\:/workspace/private/R5Demo/app/src/main/res/layout/activity_more.xml" value="0.3536458333333333" />
+        <entry key="..\:/workspace/private/R5Demo/app/src/main/res/layout/activity_qr_code.xml" value="0.3390625" />
+        <entry key="..\:/workspace/private/R5Demo/app/src/main/res/layout/item_layout_setting.xml" value="0.35260416666666666" />
+      </map>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="true" project-jdk-name="Android Studio default JDK" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build/classes" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="Android" />
+  </component>
+</project>

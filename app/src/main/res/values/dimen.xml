@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="card_view_conner_8">8dp</dimen>
+    <dimen name="card_view_margin_top">24dp</dimen>
+    <dimen name="card_view_margin_outside">24dp</dimen>
+    <dimen name="item_btn_conner_2">2dp</dimen>
+    <dimen name="item_padding_inside_4">4dp</dimen>
+    <dimen name="item_margin_outside">16dp</dimen>
+    <dimen name="item_height_48">48dp</dimen>
+    <dimen name="item_line_height_2">2px</dimen>
+    <dimen name="item_text_size_18">18sp</dimen>
+    <dimen name="toolbar_title_text_size_20">20sp</dimen>
+</resources>

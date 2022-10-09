@@ -1,0 +1,41 @@
+<resources>
+    <string name="app_name">一体机蓝牙测试工具</string>
+    <string name="common_nothing_hint">无</string>
+
+    <string name="device_sn">SN</string>
+    <string name="device_mac">MAC</string>
+    <string name="device_sn_hint">扫码后显示SN</string>
+    <string name="device_mac_hint">扫码后显示MAC地址</string>
+    <string name="device_connect_state">连接状态</string>
+    <string name="device_connect_state_hint">扫码后显示连接状态</string>
+    <string name="device_connected">已连接</string>
+    <string name="device_disconnect">未连接</string>
+    <string name="device_start_connect">开始连接</string>
+    <string name="device_stop_connect">断开连接</string>
+    <string name="device_scan_qr_code">扫码</string>
+
+    <string name="park_license">车辆信息</string>
+    <string name="park_time">时间</string>
+    <string name="park_money">停车费用</string>
+    <string name="park_more_info">更多信息</string>
+    <string name="park_more_info_user_center">客户平台信息</string>
+    <string name="park_more_info_mac">MAC地址</string>
+    <string name="park_more_info_blue_tooth_uuid">蓝牙UUID</string>
+    <string name="park_get_info">获取信息</string>
+
+    <string name="gate_state">闸机状态</string>
+    <string name="gate_open_success">开闸成功</string>
+    <string name="gate_open_fail">开闸失败</string>
+    <string name="gate_open">开闸</string>
+
+    <string name="scan_all_code_hint">将二维码或条形码对入取景框，即可自动扫描</string>
+    <string name="item_left_btn"><![CDATA[>]]></string>
+    <string name="item_right_btn"><![CDATA[<]]></string>
+    <string name="active_scan_message">搜索蓝牙设备…</string>
+    <string name="connected_wait_data_message">设备连接中…</string>
+
+    <string name="connect_failed">连接失败</string>
+    <string name="failed_connect_time_out">连接超时</string>
+    <string name="request_ble_perms">请求蓝牙权限</string>
+    <string name="failed_not_support_ble">本机不支持低功耗蓝牙!</string>
+</resources>

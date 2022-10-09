@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#333"
+    android:keepScreenOn="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/preview_box"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintDimensionRatio="w,1:1"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <com.kathline.barcode.CameraSourcePreview
+            android:id="@+id/preview_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+        <com.kathline.barcode.ViewfinderView
+            android:id="@+id/viewfinderView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+        <com.kathline.barcode.GraphicOverlay
+            android:id="@+id/graphic_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <ImageView
+        android:id="@+id/img_back"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginLeft="20dp"
+        app:layout_constraintTop_toTopOf="@+id/img_switch_camera"
+        app:layout_constraintBottom_toBottomOf="@+id/img_switch_camera"
+        app:layout_constraintLeft_toLeftOf="parent"
+        android:src="@mipmap/ico_back_white"
+        android:visibility="gone"/>
+
+    <ImageView
+        android:id="@+id/img_switch_camera"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginRight="20dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        android:src="@mipmap/btn_switch_camera"/>
+
+    <RelativeLayout
+        android:id="@+id/bottom_mask"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="30dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/scan_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:paddingTop="20dp"
+            android:paddingBottom="20dp"
+            android:text="@string/scan_all_code_hint"
+            android:textColor="#b4b4b4"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/img_light"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/scan_hint"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="30dp"
+            android:background="@drawable/shouquan_qrcode_s_flashgun"
+            android:clickable="true" />
+
+        <TextView
+            android:id="@+id/img_exit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/scan_hint"
+            android:layout_centerHorizontal="true"
+            android:background="@drawable/shouquan_qrcode_ic_back"
+            android:clickable="true" />
+
+        <TextView
+            android:id="@+id/img_gallery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/scan_hint"
+            android:layout_alignParentLeft="true"
+            android:layout_marginLeft="30dp"
+            android:background="@drawable/shouquan_qrcode_g_gallery"
+            android:clickable="true"
+
+            android:textSize="20sp" />
+
+    </RelativeLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
