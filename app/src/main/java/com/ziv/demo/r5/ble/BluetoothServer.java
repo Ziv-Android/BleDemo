@@ -425,19 +425,13 @@ public class BluetoothServer {
                 mBluetoothGatt.writeDescriptor(defaultDescriptor);
             }
         }
-//        //延迟2s，保证所有通知都能及时打开
-//        mHandler.postDelayed(new Runnable() {
-//            @Override
-//            public void run() {
-////                List<BluetoothGattDescriptor> descriptors = mWriteCharacteristic.getDescriptors();
-////                for (BluetoothGattDescriptor descriptor : descriptors) {
-////                    descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-////                    mBluetoothGatt.writeDescriptor(descriptor);
-////                }
-//                Log.d(TAG, "end time write UUID: " + mWriteCharacteristic.getUuid());
-//                Log.d(TAG, "end time notify UUID: " + mReadCharacteristic.getUuid());
-//            }
-//        }, 2000);
+//        List<BluetoothGattDescriptor> descriptors = mWriteCharacteristic.getDescriptors();
+//        for (BluetoothGattDescriptor descriptor : descriptors) {
+//            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+//            mBluetoothGatt.writeDescriptor(descriptor);
+//        }
+//        Log.d(TAG, "end time write UUID: " + mWriteCharacteristic.getUuid());
+//        Log.d(TAG, "end time notify UUID: " + mReadCharacteristic.getUuid());
     }
 
     @SuppressLint("MissingPermission")
