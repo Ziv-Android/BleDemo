@@ -24,13 +24,15 @@ import androidx.core.app.ActivityCompat;
 
 import com.ziv.demo.r5.utils.TypeConversion;
 
+import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
 public class BluetoothServer {
     private static final String TAG = "BluetoothServer";
-    private static final String TEXT_BLE_MAC = "34:B4:72:48:98:0A";
+    // 34:B4:72:48:98:0A  A0:76:4E:6C:C9:DA
+    public static final String TEXT_BLE_MAC = "A0:76:4E:6C:C9:DA";
     public static String TARGET_BLE_MAC = "20:00:00:00:00:00";
 //    private static final String TARGET_BLE_MAC = "A0:76:4E:79:AF:8A";
 
@@ -49,7 +51,7 @@ public class BluetoothServer {
     private StringBuffer mCacheMsg = new StringBuffer();
     private static final int HEADER_LENGTH = 3;
 
-    private final Handler mHandler = new Handler();
+    private WeakReference<Activity> activityWeakReference;
 
     public void init(Activity context, OnBleConnectListener listener) {
         Context applicationContext = context.getApplicationContext();
@@ -58,6 +60,7 @@ public class BluetoothServer {
 
         mBluetoothAdapter = bluetoothManager.getAdapter();
         onBleConnectListener = listener;
+        activityWeakReference = new WeakReference<>(context);
     }
 
     public boolean checkBluetoothPermission(Context context) {
@@ -122,6 +125,7 @@ public class BluetoothServer {
             if (TARGET_BLE_MAC.equals(address)) {
                 mBluetoothDevice = bluetoothDevice;
                 stopBleScan();
+                startBleConnect();
                 if (onBleConnectListener != null) {
                     onBleConnectListener.connectState("scan-connect");
                 }
@@ -130,19 +134,23 @@ public class BluetoothServer {
     };
 
     @SuppressLint("MissingPermission")
-    public void startBleConnect(Context context) {
-        stopBleConnect();
+    public void startBleConnect() {
+        if (activityWeakReference == null) {
+            return;
+        }
         if (mBluetoothDevice == null) {
             return;
         }
+        stopBleConnect();
         Log.d(TAG, "startConnect:" + mBluetoothDevice.getAddress());
         BluetoothGatt bluetoothGatt;
+        Context context = activityWeakReference.get();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             bluetoothGatt = mBluetoothDevice.connectGatt(context, false, mBluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
         } else {
             bluetoothGatt = mBluetoothDevice.connectGatt(context, false, mBluetoothGattCallback);
         }
-        bluetoothGatt.connect();
+//        bluetoothGatt.connect();
         if (onBleConnectListener != null) {
             onBleConnectListener.connectState("connect-start");
         }
@@ -295,8 +303,11 @@ public class BluetoothServer {
                 if (onBleConnectListener != null) {
                     onBleConnectListener.onConnectFailure(gatt, gatt.getDevice(), newState);
                 }
-                // 断开连接释放连接
-                mBluetoothGatt.close();
+                if (mBluetoothGatt != null) {
+                    // 断开连接释放连接
+                    mBluetoothGatt.close();
+                    mBluetoothGatt = null;
+                }
                 break;
             case BluetoothGatt.STATE_CONNECTING:
                 Log.d(TAG, "正在连接...");

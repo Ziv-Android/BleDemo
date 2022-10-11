@@ -64,12 +64,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int MSG_GATE_OPEN_SUCCESS = 0x05;
     private static final int MSG_GATE_OPEN_FAILED = 0x06;
     private static final int MSG_SCANNING_START = 0x07;
+    private static final int MSG_SCANNING_STOP = 0x08;
 
     private static final int MSG_SEND_HEART_BEAT = 0x11;
     private static final int MSG_RECEIVE_HEART_BEAT = 0x12;
     private static final int MSG_SCANNING_TIME_OUT = 0x13;
 
-    private static final int DELAY_SCANNING_TIME_OUT = 20000;
+    private static final int DELAY_SCANNING_TIME_OUT = 15000;
     private static final int DELAY_SEND_HEART_BEAT_TIME = 5000;
     private static final int DELAY_RECEIVE_HEART_BEAT_TIME = DELAY_SEND_HEART_BEAT_TIME * 3;
 
@@ -109,6 +110,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private final Gson mGson = new Gson();
     private ReceiveParkInfoBean mReceiveParkInfoBean;
+    private boolean mSendDeviceNameState = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -259,9 +261,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private final OnBleConnectListener onBleConnectListener = new OnBleConnectListener() {
         @Override
         public void connectState(String state) {
-            if ("scan-connect".equals(state)) {
-                BluetoothServer.getInstance().startBleConnect(MainActivity.this);
-            }
+            Log.d(TAG, "connectState: " + state);
         }
 
         @Override
@@ -370,10 +370,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void sendDeviceName() {
-        SendDeviceNameBean deviceNameBean = new SendDeviceNameBean(BluetoothServer.getInstance().getBleName());
-        SendBaseBean<SendDeviceNameBean> msg = new SendBaseBean<>(3, deviceNameBean);
-        BluetoothServer.getInstance().sendBleMessage(mGson.toJson(msg));
+        if (!mSendDeviceNameState) {
+            // 借用心跳数据发送设备信息，但设备名称信息只需要发送一次
+            SendDeviceNameBean deviceNameBean = new SendDeviceNameBean(BluetoothServer.getInstance().getBleName());
+            SendBaseBean<SendDeviceNameBean> msg = new SendBaseBean<>(3, deviceNameBean);
+            BluetoothServer.getInstance().sendBleMessage(mGson.toJson(msg));
+            mSendDeviceNameState = true;
+        }
 
+        // 触发心跳消息
         sendWorkHandlerMsg(MSG_SEND_HEART_BEAT, null, DELAY_SEND_HEART_BEAT_TIME);
     }
 
@@ -406,6 +411,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void stopBleConnectBtn() {
+        mSendDeviceNameState = false;
         clearAllWorkHandlerMsg();
 
         BluetoothServer.getInstance().stopBleConnect();
@@ -492,7 +498,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         switch (view.getId()) {
             case R.id.btn_scan_qr_code:
                 startActivity(new Intent(this, ScanQrCodeActivity.class));
-//                BluetoothServer.getInstance().setTargetBluetoothRemoteMacAddress(BluetoothServer.TEXT_BLE_MAC);
+//                BluetoothServer.TARGET_BLE_MAC = BluetoothServer.TEXT_BLE_MAC;
 //                startBleScanBtn();
                 break;
             case R.id.btn_stop_connect:
@@ -548,10 +554,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mParkInfoBtn.setTextColor(getResources().getColor(R.color.blue));
                 mGateOpenBtn.setTextColor(getResources().getColor(R.color.blue));
 
-                mScanning.setVisibility(View.GONE);
+                sendUiHandlerMsg(MSG_SCANNING_STOP, null);
                 break;
             case MSG_SCANNING_START:
                 mScanning.setVisibility(View.VISIBLE);
+                break;
+            case MSG_SCANNING_STOP:
+                if (mUiHandler.hasMessages(MSG_SCANNING_TIME_OUT)) {
+                    mUiHandler.removeMessages(MSG_SCANNING_TIME_OUT);
+                }
+                if (mWorkHandler.hasMessages(MSG_SCANNING_TIME_OUT)) {
+                    mWorkHandler.removeMessages(MSG_SCANNING_TIME_OUT);
+                }
+                mScanning.setVisibility(View.GONE);
                 break;
             case MSG_SCANNING_TIME_OUT:
                 mScanning.setVisibility(View.GONE);
@@ -567,7 +582,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 mMaskGetInfo.setVisibility(View.VISIBLE);
                 mMaskGateOpen.setVisibility(View.VISIBLE);
+                mParkLicenseView.setText(null);
+                mParkTimeView.setText(null);
+                mParkMoneyView.setText(null);
                 mParkInfoBtn.setTextColor(getResources().getColor(R.color.blue_11));
+                mGateOpenStateView.setText(null);
                 mGateOpenBtn.setTextColor(getResources().getColor(R.color.blue_11));
 
                 mScanning.setVisibility(View.GONE);
@@ -641,6 +660,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 case MSG_RECEIVE_HEART_BEAT:
                     mainActivity.stopBleConnectBtn();
                     Log.d(TAG, "receive heart beat time out");
+                    break;
+                case MSG_SCANNING_STOP:
+                    BluetoothServer.getInstance().stopBleScan();
+                    mainActivity.clearAllUiHandlerMsg();
+                    Log.d(TAG, "scan stop");
                     break;
                 case MSG_SCANNING_TIME_OUT:
                     BluetoothServer.getInstance().stopBleScan();
