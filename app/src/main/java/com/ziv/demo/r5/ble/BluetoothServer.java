@@ -162,11 +162,28 @@ public class BluetoothServer {
             return;
         }
         Log.d(TAG, "disconnect:" + mBluetoothGatt.getDevice().getAddress());
-        mBluetoothGatt.disconnect();
-        mBluetoothGatt.close();
+        bleGattDisconnect();
+        bleGattClose();
         if (onBleConnectListener != null) {
             onBleConnectListener.connectState("connect-stop");
         }
+    }
+
+    @SuppressLint("MissingPermission")
+    private void bleGattDisconnect() {
+        if (mBluetoothGatt == null) {
+            return;
+        }
+        mBluetoothGatt.disconnect();
+    }
+
+    @SuppressLint("MissingPermission")
+    private void bleGattClose() {
+        if (mBluetoothGatt == null) {
+            return;
+        }
+        mBluetoothGatt.close();
+        mBluetoothGatt = null;
     }
 
     private final BluetoothGattCallback mBluetoothGattCallback = new BluetoothGattCallback() {
@@ -303,11 +320,7 @@ public class BluetoothServer {
                 if (onBleConnectListener != null) {
                     onBleConnectListener.onConnectFailure(gatt, gatt.getDevice(), newState);
                 }
-                if (mBluetoothGatt != null) {
-                    // 断开连接释放连接
-                    mBluetoothGatt.close();
-                    mBluetoothGatt = null;
-                }
+                stopBleConnect();
                 break;
             case BluetoothGatt.STATE_CONNECTING:
                 Log.d(TAG, "正在连接...");
@@ -327,6 +340,7 @@ public class BluetoothServer {
             case BluetoothGatt.GATT_SUCCESS:
                 Log.w(TAG, "BluetoothGatt.GATT_SUCCESS");
                 if (newState == BluetoothGatt.STATE_DISCONNECTED) {
+                    stopBleConnect();
                     if (onBleConnectListener != null) {
                         onBleConnectListener.onDisConnectSuccess(mBluetoothDevice);
                     }
@@ -349,18 +363,21 @@ public class BluetoothServer {
                 if (onBleConnectListener != null) {
                     onBleConnectListener.onDisConnectSuccess(gatt.getDevice());
                 }
+                stopBleConnect();
                 break;
             case BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION:
                 Log.w(TAG, "BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION");
                 break;
             case 34:
                 Log.w(TAG, "断开服务:(34)");
+                stopBleConnect();
                 break;
             case 62:
                 Log.w(TAG, "没有发现服务:(62)");
                 break;
             case 133:
                 Log.w(TAG, "连接异常:(133)");
+                stopBleConnect();
                 break;
             case BluetoothGatt.GATT_CONNECTION_CONGESTED:
                 Log.w(TAG, "BluetoothGatt.GATT_CONNECTION_CONGESTED");

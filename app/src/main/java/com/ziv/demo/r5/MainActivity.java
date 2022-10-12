@@ -108,6 +108,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Handler mWorkHandler;
     private UiHandler mUiHandler;
 
+    private ActivityResultLauncher<Intent> mActivityResultLauncher;
     private final Gson mGson = new Gson();
     private ReceiveParkInfoBean mReceiveParkInfoBean;
     private boolean mSendDeviceNameState = false;
@@ -159,28 +160,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             return;
         }
 
-        perms = createCheckPermission();
-        // check bluetooth
-        if (!checkPermission() || !EasyPermissions.hasPermissions(this, perms)) {
-            // request permission
-            EasyPermissions.requestPermissions(this, getResources().getText(R.string.request_ble_perms).toString(), REQUEST_PERMISSION, perms);
-        }
-
-        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        // 询问打开蓝牙
-        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
-            ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), new ActivityResultCallback<ActivityResult>() {
-                @Override
-                public void onActivityResult(ActivityResult result) {
-                    if (result.getResultCode() == Activity.RESULT_OK) {
-                        Intent intent = result.getData();
-                        // Handle the Intent
-                    }
+        mActivityResultLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), new ActivityResultCallback<ActivityResult>() {
+            @Override
+            public void onActivityResult(ActivityResult result) {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    Intent intent = result.getData();
+                    // Handle the Intent
                 }
-            });
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            activityResultLauncher.launch(enableBtIntent);
-        }
+            }
+        });
+
+        checkBluetoothOpen();
 
         BluetoothServer.getInstance().init(this, onBleConnectListener);
         // bind data
@@ -195,6 +185,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         });
 
 //        jsonParse();
+    }
+
+    private boolean checkBluetoothOpen() {
+        perms = createCheckPermission();
+        // check bluetooth
+        if (!checkPermission() || !EasyPermissions.hasPermissions(this, perms)) {
+            // request permission
+            EasyPermissions.requestPermissions(this, getResources().getText(R.string.request_ble_perms).toString(), REQUEST_PERMISSION, perms);
+        }
+
+        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        // 询问打开蓝牙
+        if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            if (mActivityResultLauncher != null) {
+                mActivityResultLauncher.launch(enableBtIntent);
+            }
+            return false;
+        } else {
+            return true;
+        }
     }
 
     private void jsonParse() {
@@ -495,24 +506,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @SuppressLint("NonConstantResourceId")
     @Override
     public void onClick(View view) {
-        switch (view.getId()) {
-            case R.id.btn_scan_qr_code:
-                startActivity(new Intent(this, ScanQrCodeActivity.class));
-//                BluetoothServer.TARGET_BLE_MAC = BluetoothServer.TEXT_BLE_MAC;
-//                startBleScanBtn();
-                break;
-            case R.id.btn_stop_connect:
-                stopBleConnectBtn();
-                break;
-            case R.id.btn_get_park_info:
-                sendGetParkInfo();
-                break;
-            case R.id.btn_park_more_info:
-                startActivity(new Intent(this, MoreActivity.class));
-                break;
-            case R.id.btn_gate_open:
-                sendOpenGate();
-                break;
+        if (checkBluetoothOpen()) {
+            switch (view.getId()) {
+                case R.id.btn_scan_qr_code:
+                    startActivity(new Intent(this, ScanQrCodeActivity.class));
+//                    BluetoothServer.TARGET_BLE_MAC = BluetoothServer.TEXT_BLE_MAC;
+//                    startBleScanBtn();
+                    break;
+                case R.id.btn_stop_connect:
+                    stopBleConnectBtn();
+                    break;
+                case R.id.btn_get_park_info:
+                    sendGetParkInfo();
+                    break;
+                case R.id.btn_park_more_info:
+                    startActivity(new Intent(this, MoreActivity.class));
+                    break;
+                case R.id.btn_gate_open:
+                    sendOpenGate();
+                    break;
+            }
         }
     }
 
@@ -547,6 +560,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mConnectResultBtn.setText(getResources().getString(R.string.device_stop_connect));
                 mConnectResultView.setVisibility(View.VISIBLE);
                 mConnectResultView.setText(getResources().getText(R.string.device_connected));
+                mConnectResultView.setTextColor(getResources().getColor(R.color.color_ok));
                 mConnectResultHintView.setVisibility(View.GONE);
 
                 mMaskGetInfo.setVisibility(View.GONE);
@@ -602,11 +616,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case MSG_GATE_OPEN_SUCCESS:
                 mGateOpenStateView.setText(getResources().getText(R.string.gate_open_success));
-                mGateOpenStateView.setTextColor(getResources().getColor(R.color.purple_200));
+                mGateOpenStateView.setTextColor(getResources().getColor(R.color.color_ok));
                 break;
             case MSG_GATE_OPEN_FAILED:
                 mGateOpenStateView.setText(getResources().getText(R.string.gate_open_fail));
-                mGateOpenStateView.setTextColor(getResources().getColor(R.color.purple_700));
+                mGateOpenStateView.setTextColor(getResources().getColor(R.color.color_failed));
                 break;
             case MSG_SHOW_IN_TEST_VIEW:
                 String value = (String) msg.obj;
@@ -668,6 +682,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     break;
                 case MSG_SCANNING_TIME_OUT:
                     BluetoothServer.getInstance().stopBleScan();
+                    BluetoothServer.getInstance().stopBleConnect();
                     mainActivity.sendUiHandlerMsg(MSG_SCANNING_TIME_OUT, null);
                     Log.d(TAG, "scan timeout");
                     break;
