@@ -16,9 +16,9 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!--适配android11（API30）及以下-->
     <!--蓝牙连接权限-->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH"/>
     <!--蓝牙通讯权限-->
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!--适配android9（API28）及以下-->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />

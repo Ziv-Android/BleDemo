@@ -2,7 +2,7 @@ package com.ziv.demo.r5.bean;
 
 import com.google.gson.annotations.SerializedName;
 
-public class ReceiveParkInfoBean extends ReceiveBodyBaseBean {
+public class ReceiveBodyBean {
     @SerializedName("plate")
     public String plate;
     @SerializedName("time")

@@ -17,7 +17,6 @@ import android.bluetooth.le.ScanResult;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.os.Handler;
 import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
@@ -271,21 +270,25 @@ public class BluetoothServer {
             Log.w(TAG, "onCharacteristicChanged -> 收到数据str(hex):" + msg);
             String s = new String(value);
             Log.w(TAG, "onCharacteristicChanged -> 收到数据str:" + s);
+            try {
+                int length = value.length;
+                if (length >= 2) {
+                    byte end1 = (byte) 10;
+                    byte end2 = (byte) 13;
+                    byte b1 = value[length - 1];
+                    byte b2 = value[length - 2];
+                    Log.w(TAG, "onCharacteristicChanged -> 收到数据末尾为:" + (b1 == end1) + ", " + (b2 == end2));
 
-            int length = value.length;
-            if (length >= 2) {
-                byte end1 = (byte) 10;
-                byte end2 = (byte) 13;
-                byte b1 = value[length - 1];
-                byte b2 = value[length - 2];
-                Log.w(TAG, "onCharacteristicChanged -> 收到数据末尾为:" + (b1 == end1) + ", " + (b2 == end2));
-                mCacheMsg.append(new String(value));
-                if (b1 == end1 && b2 == end2) {
-                    if (onBleConnectListener != null) {
-                        onBleConnectListener.onReceiveMessage(mCacheMsg.toString());
+                    mCacheMsg.append(new String(value, "GBK"));
+                    if (b1 == end1 && b2 == end2) {
+                        if (onBleConnectListener != null) {
+                            onBleConnectListener.onReceiveMessage(mCacheMsg.toString());
+                        }
+                        mCacheMsg = new StringBuffer();
                     }
-                    mCacheMsg = new StringBuffer();
                 }
+            } catch (Exception e) {
+                Log.e(TAG, "receiveMessage Exception:" + e);
             }
         }
 

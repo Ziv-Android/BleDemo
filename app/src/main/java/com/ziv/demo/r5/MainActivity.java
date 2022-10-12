@@ -7,14 +7,17 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -32,8 +35,7 @@ import androidx.lifecycle.Observer;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.ziv.demo.r5.bean.ReceiveBaseBean;
-import com.ziv.demo.r5.bean.ReceiveBodyBaseBean;
-import com.ziv.demo.r5.bean.ReceiveParkInfoBean;
+import com.ziv.demo.r5.bean.ReceiveBodyBean;
 import com.ziv.demo.r5.bean.SendBaseBean;
 import com.ziv.demo.r5.bean.SendDeviceNameBean;
 import com.ziv.demo.r5.bean.SendGateOpenBean;
@@ -49,6 +51,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import pub.devrel.easypermissions.AppSettingsDialog;
 import pub.devrel.easypermissions.EasyPermissions;
@@ -71,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int MSG_SCANNING_TIME_OUT = 0x13;
 
     private static final int DELAY_SCANNING_TIME_OUT = 15000;
-    private static final int DELAY_SEND_HEART_BEAT_TIME = 5000;
+    private static final int DELAY_SEND_HEART_BEAT_TIME = 3000;
     private static final int DELAY_RECEIVE_HEART_BEAT_TIME = DELAY_SEND_HEART_BEAT_TIME * 3;
 
     private static final String STATE_OPERATE_OK = "ok";
@@ -108,10 +111,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Handler mWorkHandler;
     private UiHandler mUiHandler;
 
+    private LocationManager mLocationManager;
     private ActivityResultLauncher<Intent> mActivityResultLauncher;
+    private ActivityResultLauncher<String[]> mRequestBluetoothConnect;
     private final Gson mGson = new Gson();
-    private ReceiveParkInfoBean mReceiveParkInfoBean;
+    private volatile ReceiveBodyBean mReceiveParkInfoBean;
     private boolean mSendDeviceNameState = false;
+    private Map<String, Boolean> mBluetoothPermission;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,7 +125,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
 
         mTestShowMsgView = findViewById(R.id.test_show_msg);
-        mTestShowMsgView.setVisibility(View.GONE);
+        mTestShowMsgView.setText("");
+//        mTestShowMsgView.setVisibility(View.GONE);
 
         // initView
         mScanResultView = findViewById(R.id.result_device_sn);
@@ -137,10 +144,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mParkMoreInfoBtn.setOnClickListener(this);
         mParkInfoBtn = findViewById(R.id.btn_get_park_info);
         mParkInfoBtn.setOnClickListener(this);
+        mParkInfoBtn.setClickable(false);
 
         mGateOpenStateView = findViewById(R.id.result_gate_open);
         mGateOpenBtn = findViewById(R.id.btn_gate_open);
         mGateOpenBtn.setOnClickListener(this);
+        mGateOpenBtn.setClickable(false);
 
         mMaskGetInfo = findViewById(R.id.mask_get_info);
         mMaskGateOpen = findViewById(R.id.mask_gate_open);
@@ -160,6 +169,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             return;
         }
 
+        mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
         mActivityResultLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), new ActivityResultCallback<ActivityResult>() {
             @Override
             public void onActivityResult(ActivityResult result) {
@@ -167,6 +178,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Intent intent = result.getData();
                     // Handle the Intent
                 }
+            }
+        });
+
+        mRequestBluetoothConnect = registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), new ActivityResultCallback<Map<String, Boolean>>() {
+            @Override
+            public void onActivityResult(Map<String, Boolean> result) {
+                mBluetoothPermission = result;
             }
         });
 
@@ -184,15 +202,25 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });
 
-//        jsonParse();
+        jsonParse();
     }
 
     private boolean checkBluetoothOpen() {
         perms = createCheckPermission();
         // check bluetooth
-        if (!checkPermission() || !EasyPermissions.hasPermissions(this, perms)) {
+        // !checkPermission() ||
+        if (!EasyPermissions.hasPermissions(this, perms)) {
             // request permission
             EasyPermissions.requestPermissions(this, getResources().getText(R.string.request_ble_perms).toString(), REQUEST_PERMISSION, perms);
+        }
+
+        boolean gps = mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        if (!gps) {
+            //跳转到gps设置页
+            Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+            if (mActivityResultLauncher != null) {
+                mActivityResultLauncher.launch(intent);
+            }
         }
 
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -209,31 +237,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void jsonParse() {
-        ReceiveBaseBean<ReceiveBodyBaseBean> bean_1 = new ReceiveBaseBean<>();
+        ReceiveBaseBean<ReceiveBodyBean> bean_1 = new ReceiveBaseBean<>();
         bean_1.state = "ok";
         String s_1 = mGson.toJson(bean_1);
         Log.d(TAG, "toJson-1: " + s_1);
 
-        ReceiveBaseBean<ReceiveBodyBaseBean> o_1 = mGson.fromJson(s_1, new TypeToken<ReceiveBaseBean<ReceiveBodyBaseBean>>() {
+        ReceiveBaseBean<ReceiveBodyBean> o_1 = mGson.fromJson(s_1, new TypeToken<ReceiveBaseBean<ReceiveBodyBean>>() {
         }.getType());
 
         Log.d(TAG, "fromJson-1: " + o_1.cmd + ", state: " + o_1.state);
 
         mTestShowMsgView.setText(s_1);
 
-        ReceiveBaseBean<ReceiveParkInfoBean> bean_2 = new ReceiveBaseBean<>();
+        ReceiveBaseBean<ReceiveBodyBean> bean_2 = new ReceiveBaseBean<>();
         bean_2.state = "ok";
-        bean_2.body = new ReceiveParkInfoBean();
+        bean_2.body = new ReceiveBodyBean();
         bean_2.body.plate = "测A1223456";
         bean_2.body.time = "2099-10-10 10:10:10";
         bean_2.body.money = "99999.0元";
         String s_2 = mGson.toJson(bean_2);
         Log.d(TAG, "toJson-2: " + s_2);
 
-        ReceiveBaseBean<ReceiveParkInfoBean> o_2 = mGson.fromJson(s_2, new TypeToken<ReceiveBaseBean<ReceiveParkInfoBean>>() {
+        ReceiveBaseBean<ReceiveBodyBean> o_2 = mGson.fromJson("{\"body\":{\"plate\":\"_��_\",\"time\":\"2022-10-12 19:23:59\"},\"cmd\":2,\"state\":\"ok\"}", new TypeToken<ReceiveBaseBean<ReceiveBodyBean>>() {
         }.getType());
 
-        Log.d(TAG, "fromJson-2: " + o_2.cmd + ", state: " + o_2.state + o_2.body);
+        Log.d(TAG, "fromJson-2: " + o_2.cmd + ", state: " + o_2.state + ", " + o_2.body.toString());
 
         mTestShowMsgView.setText(s_2);
 
@@ -252,6 +280,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         ArrayList<String> permsList = new ArrayList<>();
         permsList.addAll(Arrays.asList(perms_location));
         permsList.addAll(Arrays.asList(perms_bluetooth));
+        sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, "createCheckPermission:" + Build.VERSION.SDK_INT);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             permsList.addAll(Arrays.asList(perms_bluetooth_api31));
         }
@@ -262,6 +291,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         for (String permission : perms) {
             int checkSelfPermission = ActivityCompat.checkSelfPermission(this, permission);
             Log.d(TAG, "checkSelfPermission: " + permission + " -> " + checkSelfPermission);
+            sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, "checkSelfPermission:" + permission + " -> " + checkSelfPermission);
             if (checkSelfPermission != PackageManager.PERMISSION_GRANTED) {
                 return false;
             }
@@ -314,7 +344,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onReceiveMessage(String msg) {
             Log.d(TAG, "onReceiveMessage: " + msg);
-            sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, msg);
             processReceive(msg);
         }
 
@@ -335,10 +364,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     };
 
     private void processReceive(String msg) {
+        sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, msg);
+        sendWorkHandlerMsg(MSG_RECEIVE_HEART_BEAT, null, DELAY_RECEIVE_HEART_BEAT_TIME);
+
         try {
-            TypeToken<ReceiveBaseBean<ReceiveBodyBaseBean>> typeToken = new TypeToken<ReceiveBaseBean<ReceiveBodyBaseBean>>() {
+            TypeToken<ReceiveBaseBean<ReceiveBodyBean>> typeToken = new TypeToken<ReceiveBaseBean<ReceiveBodyBean>>() {
             };
-            ReceiveBaseBean<ReceiveParkInfoBean> receiveBean = mGson.fromJson(msg, typeToken.getType());
+            ReceiveBaseBean<ReceiveBodyBean> receiveBean = mGson.fromJson(msg, typeToken.getType());
 
             // 解析json/text,根据类型决定是开始发送心跳还是数据解析显示
             switch (receiveBean.cmd) {
@@ -354,8 +386,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     Log.d(TAG, "Receive 获取数据 -> cmd: 2, state: " + receiveBean.state);
                     if (STATE_OPERATE_OK.equals(receiveBean.state)) {
                         mReceiveParkInfoBean = receiveBean.body;
-                        sendUiHandlerMsg(MSG_GET_PARK_INFO, null);
                     }
+                    sendUiHandlerMsg(MSG_GET_PARK_INFO, null);
                     break;
                 case 3:
                     Log.d(TAG, "Receive 设备名称 -> cmd: 3, state: " + receiveBean.state);
@@ -363,7 +395,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 case 4:
                     Log.d(TAG, "Receive 心跳 -> cmd: 4, state: " + receiveBean.state);
                     sendUiHandlerMsg(MSG_CONNECT_WAIT_DATA_SUCCESS, null);
-                    sendWorkHandlerMsg(MSG_RECEIVE_HEART_BEAT, null, DELAY_RECEIVE_HEART_BEAT_TIME);
+
                     sendDeviceName();
                     break;
                 default:
@@ -371,6 +403,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         } catch (Exception e) {
             Log.d(TAG, "msg is not json: " + msg);
+            sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, "Exception:" + e.getMessage());
         }
     }
 
@@ -378,6 +411,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         SendHeartBeatBean heartBeatBean = new SendHeartBeatBean();
         SendBaseBean<SendHeartBeatBean> msgHeartBeat = new SendBaseBean<>(4, heartBeatBean);
         BluetoothServer.getInstance().sendBleMessage(mGson.toJson(msgHeartBeat));
+
+        sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, "sendHeartBeat:" + System.currentTimeMillis());
     }
 
     private void sendDeviceName() {
@@ -387,6 +422,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             SendBaseBean<SendDeviceNameBean> msg = new SendBaseBean<>(3, deviceNameBean);
             BluetoothServer.getInstance().sendBleMessage(mGson.toJson(msg));
             mSendDeviceNameState = true;
+
+            sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, "sendDeviceName:" + System.currentTimeMillis());
         }
 
         // 触发心跳消息
@@ -399,7 +436,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             SendBaseBean<SendParkInfoBean> msgPark = new SendBaseBean<>(2, parkInfoBean);
             BluetoothServer.getInstance().sendBleMessage(mGson.toJson(msgPark));
 
+            // 刷新下次心跳发送时间
             sendWorkHandlerMsg(MSG_SEND_HEART_BEAT, null, DELAY_SEND_HEART_BEAT_TIME);
+            sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, "sendGetParkInfo:" + System.currentTimeMillis());
         }
     }
 
@@ -409,7 +448,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             SendBaseBean<SendGateOpenBean> msgGate = new SendBaseBean<>(1, gateOpenBean);
             BluetoothServer.getInstance().sendBleMessage(mGson.toJson(msgGate));
 
+            // 刷新下次心跳发送时间
             sendWorkHandlerMsg(MSG_SEND_HEART_BEAT, null, DELAY_SEND_HEART_BEAT_TIME);
+            sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, "sendOpenGate:" + System.currentTimeMillis());
         }
     }
 
@@ -517,12 +558,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     stopBleConnectBtn();
                     break;
                 case R.id.btn_get_park_info:
+                    mParkInfoBtn.setClickable(false);
                     sendGetParkInfo();
                     break;
                 case R.id.btn_park_more_info:
                     startActivity(new Intent(this, MoreActivity.class));
                     break;
                 case R.id.btn_gate_open:
+                    mGateOpenBtn.setClickable(false);
                     sendOpenGate();
                     break;
             }
@@ -543,6 +586,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     public void onPermissionsDenied(int requestCode, @NonNull List<String> perms) {
         Log.d(TAG, "permission denied:" + perms);
+        sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, "onPermissionsDenied:" + perms);
         if (EasyPermissions.somePermissionPermanentlyDenied(this, perms)) {
             new AppSettingsDialog.Builder(this).build().show();
         }
@@ -566,7 +610,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mMaskGetInfo.setVisibility(View.GONE);
                 mMaskGateOpen.setVisibility(View.GONE);
                 mParkInfoBtn.setTextColor(getResources().getColor(R.color.blue));
+                mParkInfoBtn.setClickable(true);
                 mGateOpenBtn.setTextColor(getResources().getColor(R.color.blue));
+                mGateOpenBtn.setClickable(true);
 
                 sendUiHandlerMsg(MSG_SCANNING_STOP, null);
                 break;
@@ -600,13 +646,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mParkTimeView.setText(null);
                 mParkMoneyView.setText(null);
                 mParkInfoBtn.setTextColor(getResources().getColor(R.color.blue_11));
+                mParkInfoBtn.setClickable(false);
                 mGateOpenStateView.setText(null);
                 mGateOpenBtn.setTextColor(getResources().getColor(R.color.blue_11));
+                mGateOpenBtn.setClickable(false);
 
                 mScanning.setVisibility(View.GONE);
                 mScanningTipsView.setText(getResources().getText(R.string.active_scan_message));
                 break;
             case MSG_GET_PARK_INFO:
+                mParkInfoBtn.setClickable(true);
                 if (mReceiveParkInfoBean == null) {
                     return;
                 }
@@ -615,16 +664,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 mParkMoneyView.setText(mReceiveParkInfoBean.money);
                 break;
             case MSG_GATE_OPEN_SUCCESS:
+                mGateOpenBtn.setClickable(true);
                 mGateOpenStateView.setText(getResources().getText(R.string.gate_open_success));
                 mGateOpenStateView.setTextColor(getResources().getColor(R.color.color_ok));
                 break;
             case MSG_GATE_OPEN_FAILED:
+                mGateOpenBtn.setClickable(true);
                 mGateOpenStateView.setText(getResources().getText(R.string.gate_open_fail));
                 mGateOpenStateView.setTextColor(getResources().getColor(R.color.color_failed));
                 break;
             case MSG_SHOW_IN_TEST_VIEW:
                 String value = (String) msg.obj;
-                mTestShowMsgView.setText(value);
+                mTestShowMsgView.append(value + "\n");
                 break;
             default:
                 break;
@@ -670,6 +721,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     mainActivity.sendHeartBeat();
                     mainActivity.sendWorkHandlerMsg(MSG_SEND_HEART_BEAT, null, DELAY_SEND_HEART_BEAT_TIME);
                     Log.d(TAG, "send heart beat");
+                    mainActivity.sendUiHandlerMsg(MSG_SHOW_IN_TEST_VIEW, "send heart beat:" + System.currentTimeMillis());
                     break;
                 case MSG_RECEIVE_HEART_BEAT:
                     mainActivity.stopBleConnectBtn();
